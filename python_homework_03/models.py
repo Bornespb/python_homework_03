@@ -25,13 +25,15 @@ class BaseValidatedField(ABC):
             raise TypeError(f"Class {cls.__name__} must have a validate method")
 
     def __get__(self, instance, owner):
-        return self.value
+        if instance is None:
+            return self
+        return instance.__dict__.get(self.name)
 
     def __set__(self, instance, value):
         is_valid, error = self.validate(value)
         if not is_valid:
             raise ValueError(f"Invalid field value for {self.name}: {error}")
-        self.value = value
+        instance.__dict__[self.name] = value
 
     @abstractmethod
     def validate(self, value) -> tuple[bool, str | None]:
@@ -61,6 +63,8 @@ class ArgumentsField(BaseValidatedField):
     def validate(self, value: dict | None) -> tuple[bool, str | None]:
         if self.required and value is None:
             return False, f"{self.name} is required"
+        if not self.required and value is None:
+            return True, None
         if not isinstance(value, dict):
             return False, f"{self.name} must be a dictionary"
         if not self.nullable and value == {}:
@@ -79,6 +83,8 @@ class EmailField(CharField):
         is_valid, error = super().validate(value)
         if not is_valid:
             return is_valid, error
+        if is_valid and value is None:
+            return True, None
         value = str(value)
         if "@" not in value:
             return False, f"{self.name} must be a valid email"
@@ -92,6 +98,8 @@ class PhoneField(BaseValidatedField):
     def validate(self, value: str | int | None) -> tuple[bool, str | None]:
         if self.required and value is None:
             return False, f"{self.name} is required"
+        if not self.required and value is None:
+            return True, None
         if not isinstance(value, str) and not isinstance(value, int):
             return False, f"{self.name} must be a string or an integer"
         if isinstance(value, int):
@@ -116,6 +124,8 @@ class DateField(BaseValidatedField):
     def validate(self, value: str | None) -> tuple[bool, str | None]:
         if self.required and value is None:
             return False, f"{self.name} is required"
+        if not self.required and value is None:
+            return True, None
         value = str(value)
         if not re.match(r"\d{2}\.\d{2}\.\d{4}", value):
             return False, f"{self.name} must be a valid date"
@@ -133,6 +143,8 @@ class BirthDayField(DateField):
         is_valid, error = super().validate(value)
         if not is_valid:
             return is_valid, error
+        if is_valid and value is None:
+            return True, None
         value = str(value)
         parsed_date = datetime.strptime(value, "%d.%m.%Y")
         if not parsed_date.year > datetime.now().year - 70:
@@ -147,6 +159,8 @@ class GenderField(BaseValidatedField):
     def validate(self, value: int | None) -> tuple[bool, str | None]:
         if self.required and value is None:
             return False, f"{self.name} is required"
+        if not self.required and value is None:
+            return True, None
         if not isinstance(value, int):
             return False, f"{self.name} must be an integer"
         if value not in [0, 1, 2]:
@@ -161,6 +175,8 @@ class ClientIDsField(BaseValidatedField):
     def validate(self, value: list[int] | None) -> tuple[bool, str | None]:
         if self.required and value is None:
             return False, f"{self.name} is required"
+        if not self.required and value is None:
+            return True, None
         if not isinstance(value, list) or not all(
             isinstance(item, int) for item in value
         ):
@@ -212,9 +228,14 @@ class OnlineScoreRequest(BaseRequest):
             return True
         if self.first_name and self.last_name:
             return True
-        if self.gender and self.birthday:
+        if self.gender in [0, 1, 2] and self.birthday:
             return True
         return False
+
+    def get_fields(self) -> list[str]:
+        return [
+            field for field in self.__dict__.keys() if self.__dict__[field] is not None
+        ]
 
     def execute(self) -> dict:
         if not self.validate():

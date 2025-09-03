@@ -48,8 +48,12 @@ def method_handler(request: dict, ctx, store):
     try:
         if method_request.method == "online_score":
             argument_request = OnlineScoreRequest(method_request.arguments)
+            ctx["has"] = argument_request.get_fields()
+            if method_request.is_admin:
+                return {"score": 42}, OK
         elif method_request.method == "clients_interests":
             argument_request = ClientsInterestsRequest(method_request.arguments)
+            ctx["nclients"] = len(argument_request.client_ids)
         else:
             return "Invalid method", INVALID_REQUEST
         response, code = argument_request.execute(), OK

@@ -4,6 +4,7 @@ import functools
 import unittest
 
 import python_homework_03.api as api
+import python_homework_03.models as models
 
 
 def cases(cases):
@@ -27,10 +28,10 @@ class TestSuite(unittest.TestCase):
         return api.method_handler({"body": request, "headers": self.headers}, self.context, self.settings)
 
     def set_valid_auth(self, request):
-        if request.get("login") == api.ADMIN_LOGIN:
-            request["token"] = hashlib.sha512((datetime.datetime.now().strftime("%Y%m%d%H") + api.ADMIN_SALT).encode('utf-8')).hexdigest()
+        if request.get("login") == models.ADMIN_LOGIN:
+            request["token"] = hashlib.sha512((datetime.datetime.now().strftime("%Y%m%d%H") + models.ADMIN_SALT).encode('utf-8')).hexdigest()
         else:
-            msg = (request.get("account", "") + request.get("login", "") + api.SALT).encode('utf-8')
+            msg = (request.get("account", "") + request.get("login", "") + models.SALT).encode('utf-8')
             request["token"] = hashlib.sha512(msg).hexdigest()
 
     def test_empty_request(self):
